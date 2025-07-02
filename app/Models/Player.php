@@ -19,4 +19,17 @@ class Player extends Model
         'attack',
         'defense'
     ];
+
+    public function attack(Monster $target, $damage)
+    {
+    $actualDamage = max(1, $damage - $target->defense);
+        $target->health -= $actualDamage;
+        return $actualDamage;
+    }
+
+    public function gainGold($amount)
+    {
+        $this->gold += $amount;
+    return $this;
+    }
 }

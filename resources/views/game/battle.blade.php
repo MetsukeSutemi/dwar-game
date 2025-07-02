@@ -11,7 +11,7 @@
         }
         
         body {
-            background: #1a2a3a url('https://i.imgur.com/X6Q7zyA.jpg') no-repeat center center fixed;
+            background: #1a2a3a url('/images/backgrounds/main_background.png') no-repeat center center fixed;
             background-size: cover;
             color: #f0f0f0;
             line-height: 1.6;
@@ -177,23 +177,26 @@
                 
                 <div class="vs">VS</div>
                 
-                <div class="combatant">
-                    <h3>{{ $monster['name'] }}</h3>
-                    <div class="monster-image">
-                        @if(file_exists(public_path('images/monsters/' . $monster['image']))
-                            <img src="{{ asset('images/monsters/' . $monster['image']) }}" alt="{{ $monster['name'] }}">
-                        @else
-                            <div style="display: flex; justify-content: center; align-items: center; height: 100%; font-size: 4rem;">👹</div>
-                        @endif
-                    </div>
-                    
-                    <div class="health-bar">
-                        <div class="health-fill" style="width: 100%"></div>
-                    </div>
-                    <div class="health-info">
-                        {{ $monster['health'] }} HP
-                    </div>
-                </div>
+              <div class="combatant">
+    <h3>{{ $monster->name }}</h3>
+    <div class="monster-image">
+        @if(file_exists(public_path('images/monsters/' . $monster->image)))
+            <img src="{{ asset('images/monsters/' . $monster->image) }}" 
+                 alt="{{ $monster->name }}">
+        @else
+            <div style="font-size: 4rem;">👹</div>
+        @endif
+    </div>
+    
+    <div class="health-bar">
+        <div class="health-fill" 
+             style="width: {{ ($monster->health/$monster->max_health)*100 }}%">
+        </div>
+    </div>
+    <div class="health-info">
+        {{ $monster->health }} / {{ $monster->max_health }} HP
+    </div>
+</div>
             </div>
             
             <div class="actions">
@@ -207,6 +210,14 @@
                         ← Вернуться в лагерь
                     </a>
                 </div>
+                <div style="margin-top: 20px;">
+    <form action="{{ route('new-battle') }}" method="POST">
+        @csrf
+        <button type="submit" class="btn" style="background: #6a89cc;">
+            Новый противник 🔄
+        </button>
+    </form>
+</div>
             </div>
         </div>
     </div>

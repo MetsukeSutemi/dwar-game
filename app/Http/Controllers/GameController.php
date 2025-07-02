@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Player; // Используем модель Player
 use Illuminate\Http\Request;
+use App\Models\Monster;
+use Illuminate\Support\Facades\Session;
 
 class GameController extends Controller
 {
@@ -33,37 +35,71 @@ class GameController extends Controller
 
     // Экран боя
     public function battle()
-    {
-        // Получаем игрока
-        $player = Player::first();
+{
+    $player = Player::first();
+    
+    // Получаем или создаем монстра
+    $monster = $this->getCurrentMonster();
+    
+    return view('game.battle', compact('player', 'monster'));
+}
+
+public function attack(Request $request)
+{
+    $player = Player::first();
+    $monster = $this->getCurrentMonster();
+    
+    // Игрок атакует
+    $playerDamage = rand($player->attack - 2, $player->attack + 5);
+    $actualDamage = $player->attack($monster, $playerDamage);
+    
+    // Проверяем, побежден ли монстр
+    if($monster->health <= 0) {
+        // Награда за победу
+        $reward = $monster->gold_reward;
+        $player->gainGold($reward);
+        $player->save();
         
-        // Создаём монстров (пока без базы)
-        $monsters = [
-            ['name' => 'Гоблин', 'health' => 30, 'attack' => 8],
-            ['name' => 'Орк', 'health' => 50, 'attack' => 12]
-        ];
+        // Удаляем текущего монстра
+        Session::forget('current_monster');
         
-        // Выбираем случайного монстра
-        $monster = $monsters[array_rand($monsters)];
-        
-        // Показываем шаблон боя с игроком и монстром
-        return view('game.battle', compact('player', 'monster'));
+        return redirect()->route('battle')
+            ->with('success', "Вы победили {$monster->name} и получили {$reward} золота!");
     }
 
-    // Обработка атаки
-    public function attack(Request $request)
-    {
-        // Получаем игрока
-        $player = Player::first();
-        
-        // Генерируем случайный урон
-        $damage = rand($player->attack - 3, $player->attack + 5);
-        
-        // Даём игроку золото за удар
-        $player->gold += 10;
-        $player->save(); // Сохраняем изменения
-        
-        // Возвращаемся на страницу боя с сообщением
-        return redirect()->route('battle')->with('success', "Вы нанесли $damage урона! +10 золота");
+    // Монстр атакует в ответ
+    $monsterDamage = rand($monster->attack - 2, $monster->attack + 3);
+    $actualMonsterDamage = $monster->attack($player, $monsterDamage);
+    $player->save();
+    
+    // Сохраняем обновленного монстра
+    Session::put('current_monster', $monster);
+    
+    return redirect()->route('battle')
+        ->with('success', "Вы нанесли {$actualDamage} урона! {$monster->name} атаковал в ответ и нанес {$actualMonsterDamage} урона.");
+}
+public function newBattle()
+{
+    // Удаляем текущего монстра
+    Session::forget('current_monster');
+    
+    return redirect()->route('battle')
+        ->with('info', 'Поиск нового противника...');
+}
+private function getCurrentMonster()
+{
+    // Если монстр уже в сессии - возвращаем его
+    if(Session::has('current_monster')) {
+        return Session::get('current_monster');
     }
+    
+    // Иначе создаем нового
+    $monster = Monster::inRandomOrder()->first();
+    $monster->health = $monster->max_health; // Полное здоровье
+    
+    Session::put('current_monster', $monster);
+    
+    return $monster;
+}
+
 }

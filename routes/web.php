@@ -11,3 +11,5 @@ Route::get('/battle', [GameController::class, 'battle'])->name('battle');
 
 // Обработка атаки → метод attack в GameController
 Route::post('/attack', [GameController::class, 'attack'])->name('attack');
+// новый бой → метод newBattle в GameController
+Route::post('/new-battle', [GameController::class, 'newBattle'])->name('new-battle');
