@@ -23,7 +23,7 @@ class Player extends Model
     public function attack(Monster $target, $damage)
     {
     $actualDamage = max(1, $damage - $target->defense);
-        $target->health -= $actualDamage;
+        $target->health = max(0, $target->health - $actualDamage);
         return $actualDamage;
     }
 

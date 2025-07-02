@@ -49,34 +49,56 @@ public function attack(Request $request)
     $player = Player::first();
     $monster = $this->getCurrentMonster();
     
+    // Собираем статистику боя
+    $battleStats = [
+        'player_damage' => 0,
+        'monster_damage' => 0,
+        'gold_earned' => 0,
+        'exp_earned' => 0 // Пока 0, добавим позже
+    ];
+
     // Игрок атакует
     $playerDamage = rand($player->attack - 2, $player->attack + 5);
-    $actualDamage = $player->attack($monster, $playerDamage);
+    $battleStats['player_damage'] = $player->attack($monster, $playerDamage);
     
     // Проверяем, побежден ли монстр
-    if($monster->health <= 0) {
-        // Награда за победу
-        $reward = $monster->gold_reward;
-        $player->gainGold($reward);
-        $player->save();
-        
-        // Удаляем текущего монстра
-        Session::forget('current_monster');
-        
-        return redirect()->route('battle')
-            ->with('success', "Вы победили {$monster->name} и получили {$reward} золота!");
-    }
-
-    // Монстр атакует в ответ
-    $monsterDamage = rand($monster->attack - 2, $monster->attack + 3);
-    $actualMonsterDamage = $monster->attack($player, $monsterDamage);
-    $player->save();
+    $monsterDefeated = $monster->health <= 0;
     
-    // Сохраняем обновленного монстра
+    // Если монстр жив - он атакует в ответ
+    if (!$monsterDefeated) {
+        $monsterDamage = rand($monster->attack - 2, $monster->attack + 3);
+        $battleStats['monster_damage'] = $monster->attack($player, $monsterDamage);
+        $playerDefeated = $player->health <= 0;
+    }
+    
+    // Сохраняем состояние
+    $player->save();
     Session::put('current_monster', $monster);
     
-    return redirect()->route('battle')
-        ->with('success', "Вы нанесли {$actualDamage} урона! {$monster->name} атаковал в ответ и нанес {$actualMonsterDamage} урона.");
+    // Определяем результат боя
+    if ($monsterDefeated) {
+        $reward = $monster->gold_reward;
+        $player->gold += $reward;
+        $player->save();
+        
+        $battleStats['gold_earned'] = $reward;
+        Session::forget('current_monster');
+        
+        return $this->battleResult('win', $battleStats);
+    }
+    
+    if ($playerDefeated) {
+        // Штраф за поражение (можешь настроить как хочешь)
+        $penalty = min(20, $player->gold);
+        $player->gold -= $penalty;
+        $player->save();
+        
+        Session::forget('current_monster');
+        return $this->battleResult('lose', $battleStats);
+    }
+    
+    // Если бой продолжается
+    return redirect()->route('battle')->with('success', "Бой продолжается!");
 }
 public function newBattle()
 {
@@ -85,6 +107,13 @@ public function newBattle()
     
     return redirect()->route('battle')
         ->with('info', 'Поиск нового противника...');
+}
+public function battleResult($result, $battleStats)
+{
+    return view('game.battle_result', [
+        'result' => $result, // 'win' или 'lose'
+        'stats' => $battleStats
+    ]);
 }
 private function getCurrentMonster()
 {
